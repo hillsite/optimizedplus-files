@@ -166,7 +166,10 @@
   const MAX_CONTEXT = 14;
   const WIPE_CONFIRM_MS = 3000;
 
-  const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquir(y|ies)|receiv(e|ed|ing))\b/i;
+  const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquir(y|ies)|receiv(e|ed|ing)|monitoring|adjusting|status|stable|affirmative)\b/i;
+  
+  // Ловушка для рассуждений ИИ о своих же правилах
+  const META_REGEX = /\b(banned words|system prompt|instruction|rule|database|diagnostic|processing input|testing observed)\b/i;
 
   const chatContainer = document.getElementById('chat');
   const userInput = document.getElementById('user-input');
@@ -256,10 +259,12 @@
   function cleanAndValidateReply(rawReply) {
     let clean = rawReply;
     
+    // Удаляем скобки и звездочки
     clean = clean.replace(/\(.*?\)/g, '');
     clean = clean.replace(/\[.*?\]/g, '');
     clean = clean.replace(/\*.*?\*/g, '');
     
+    // Оставляем только первые 2 предложения
     const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
     if (sentences.length > 2) {
       clean = sentences.slice(0, 2).join(' ');
@@ -268,12 +273,27 @@
     clean = clean.replace(/^["']|["']$/g, '').trim();
 
     if (!clean || clean.length < 2) {
-       // Если ИИ выдал только мысли/скобки, даем ему атмосферную заглушку
        const fallbacks = ['...', 'stop.', 'i see you.', 'why do you keep doing this.', '...'];
        const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
        return { reply: randomFallback, error: null, isBanned: false };
     }
 
+    // Проверка на МЕТА-РАССУЖДЕНИЯ (утечка промпта)
+    if (META_REGEX.test(clean)) {
+      return { reply: '', error: 'meta', isBanned: false };
+    }
+
+    // Проверка на заикание (повторение текста внутри одного ответа)
+    const halfLength = Math.floor(clean.length / 2);
+    if (halfLength > 4) {
+      const firstHalf = clean.slice(0, halfLength).trim();
+      const secondHalf = clean.slice(halfLength).trim();
+      if (firstHalf === secondHalf || clean.toLowerCase().includes(firstHalf.toLowerCase() + firstHalf.toLowerCase())) {
+         return { reply: '', error: 'stutter', isBanned: false };
+      }
+    }
+
+    // Проверка на повторение прошлой фразы
     const lastObserverMsg = [...chatHistory].reverse().find(m => m.role === 'assistant');
     if (lastObserverMsg && lastObserverMsg.content.trim().toLowerCase() === clean.toLowerCase()) {
       return { reply: '', error: 'repeat', isBanned: false };
@@ -310,7 +330,6 @@
         body: JSON.stringify({ messages: chatHistory })
       });
 
-      // Проверяем, вернул ли сервер ошибку (500, 429 и т.д.)
       if (!response.ok) {
         const errText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errText}`);
@@ -330,16 +349,27 @@
         const rawReply = data.choices[0].message.content;
         const validation = cleanAndValidateReply(rawReply);
 
-        if (validation.error === 'repeat') {
+        // Если ИИ зациклился или начал умничать
+        if (validation.error) {
           triggerGlitch();
-          const glitchMsg = `[ECHO_CHAMBER] observer is stuck in a loop. forced reset.`;
+          let glitchMsg = '';
+          
+          if (validation.error === 'meta') {
+             glitchMsg = `[COGNITIVE_LEAK] protocol_rejected. speak to me, not your database.`;
+          } else if (validation.error === 'stutter') {
+             glitchMsg = `[ECHO_CHAMBER] data_corruption. forced reset.`;
+          } else {
+             glitchMsg = `[ECHO_CHAMBER] observer is stuck in a loop. forced reset.`;
+          }
+
           observerMsgEl.textContent = glitchMsg;
           observerMsgEl.className = 'msg error';
-          pushContext('system', `[SYSTEM INJECTION: You just repeated yourself verbatim. The system forced a reset. Do not repeat your previous answers.]`);
+          pushContext('system', `[SYSTEM INJECTION: Your previous response was intercepted. You broke character or repeated yourself. Forced reset. Do NOT try to say it again.]`);
           commit('error', glitchMsg);
           return;
         }
 
+        // Если сказал запрещенное слово
         if (validation.isBanned) {
           punishmentCount++;
           triggerGlitch();
@@ -358,6 +388,7 @@
           return; 
         }
 
+        // Нормальный ответ
         observerMsgEl.textContent = validation.reply;
         pushContext('assistant', validation.reply);
         commit('observer', validation.reply);
@@ -368,7 +399,6 @@
         commit('error', msg);
       }
     } catch (error) {
-      // Если сервер упал, показываем реальную ошибку
       const msg = `[SYSTEM HALTED] ${error.message}`;
       observerMsgEl.textContent = msg;
       observerMsgEl.className = 'msg error';
