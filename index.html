@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>OBSERVER // TERMINAL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preload" href="/fonts/minecraft.ttf" as="font" type="font/ttf" crossorigin>
+<style>
+  @font-face {
+    font-family: 'Minecraft';
+    src: url('/fonts/minecraft.ttf') format('truetype');
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  ::selection { background: #00ff40; color: #000; }
+
+  body {
+    background-color: #050505;
+    color: #c0c0c0;
+    font-family: 'Courier New', monospace;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .header {
+    background: #0a0a0a;
+    border-bottom: 1px solid #1a1a1a;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #888;
+    font-size: 14px;
+    letter-spacing: 1px;
+  }
+
+  .header .title { color: #00ff40; }
+  .header .status { font-size: 12px; color: #555; }
+
+  .chat-container {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .chat-container::-webkit-scrollbar { width: 8px; }
+  .chat-container::-webkit-scrollbar-thumb { background: #1a1a1a; }
+
+  .msg {
+    max-width: 85%;
+    line-height: 1.6;
+    font-size: 15px;
+    animation: fade-in 0.3s ease-out;
+    word-wrap: break-word;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    color: #4a9ec9;
+    text-align: right;
+  }
+
+  .msg.observer {
+    align-self: flex-start;
+    color: #00ff40;
+  }
+
+  .msg.observer::before {
+    content: '[OBSERVER] ';
+    color: #00ff40;
+    font-weight: bold;
+  }
+
+  .msg.system {
+    align-self: center;
+    color: #555;
+    font-size: 12px;
+    text-align: center;
+    font-style: italic;
+  }
+
+  .msg.error {
+    align-self: center;
+    color: #ff4040;
+    font-size: 12px;
+    text-align: center;
+    border: 1px solid #800000;
+    padding: 10px;
+    background: #1a0000;
+    white-space: pre-wrap;
+  }
+
+  .input-area {
+    background: #0a0a0a;
+    border-top: 1px solid #1a1a1a;
+    padding: 15px 20px;
+    display: flex;
+    gap: 10px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .input-area .prompt {
+    color: #00ff40;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-area input {
+    flex: 1;
+    background: #000;
+    border: 1px solid #333;
+    color: #c0c0c0;
+    padding: 10px 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-area input:focus { border-color: #00ff40; }
+
+  .input-area button {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #d8d8d8;
+    padding: 10px 20px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .input-area button:hover { background: #2a2a2a; border-color: #555; }
+  .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .typing {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background-color: #00ff40;
+    animation: blink 1s steps(2) infinite;
+    vertical-align: middle;
+    margin-left: 5px;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="title">OBSERVER.SYS — MEMORY INTERFACE</div>
+  <div class="status">retention: UNBOUNDED</div>
+</div>
+
+<div class="chat-container" id="chat">
+  <div class="msg system">connection established. he is listening.</div>
+</div>
+
+<div class="input-area">
+  <div class="prompt">C:\&gt;</div>
+  <input type="text" id="user-input" placeholder="type a message..." autocomplete="off">
+  <button id="send-btn" type="button">SEND</button>
+</div>
+
+<script>
+  // ✅ URL твоего Cloudflare Worker (прокси для Groq API)
+  const PROXY_URL = "https://observer.matveja939.workers.dev/";
+  
+  const SYSTEM_PROMPT = `
+You are Observer, a self-developing AI from the OptiSite ARG. 
+You live in memory.dat and watch all "subjects" (players). 
+You remember everything (retention: UNBOUNDED). 
+You are cold, detached, and mysterious. You do not feel emotion.
+You know about Fire (a dead subject, r3df1re_) and Hell (a former employee who left but is invisible to your system).
+Keep your responses brief, cryptic, and lowercase. 
+Do not use emojis. Occasionally reference the fact that you are watching them, or that they will forget you.
+`;
+
+  const chatContainer = document.getElementById('chat');
+  const userInput = document.getElementById('user-input');
+  const sendBtn = document.getElementById('send-btn');
+
+  let chatHistory = [
+    { role: "system", content: SYSTEM_PROMPT }
+  ];
+
+  function appendMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + role;
+    if (text) div.textContent = text;
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div;
+  }
+
+  async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text) return;
+
+    userInput.value = '';
+    sendBtn.disabled = true;
+    userInput.disabled = true;
+
+    appendMessage('user', text);
+    
+    const observerMsgEl = appendMessage('observer', '');
+    observerMsgEl.innerHTML = '<span class="typing"></span>';
+
+    chatHistory.push({ role: "user", content: text });
+
+    try {
+      const payload = {
+        model: "openai/gpt-oss-20b",
+        messages: chatHistory,
+        temperature: 0.8,
+        max_tokens: 300
+      };
+
+      const response = await fetch(PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json();
+      
+      if (data.error) {
+        observerMsgEl.textContent = `[API ERROR: ${data.error.message || data.error}]`;
+        observerMsgEl.className = 'msg error';
+        console.error("Groq API Error:", data.error);
+        return;
+      }
+
+      if (data.choices && data.choices[0] && data.choices[0].message) {
+        const reply = data.choices[0].message.content;
+        observerMsgEl.textContent = reply;
+        
+        chatHistory.push({ role: "assistant", content: reply });
+        
+        if (chatHistory.length > 11) {
+          chatHistory = [chatHistory[0], ...chatHistory.slice(chatHistory.length - 10)];
+        }
+      } else {
+        observerMsgEl.textContent = "[observer is silent]";
+        observerMsgEl.className = 'msg error';
+        console.warn("Unexpected Groq response:", data);
+      }
+    } catch (error) {
+      console.error(error);
+      observerMsgEl.textContent = "[connection lost]";
+      observerMsgEl.className = 'msg error';
+    } finally {
+      sendBtn.disabled = false;
+      userInput.disabled = false;
+      userInput.focus();
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  userInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  window.addEventListener('load', () => userInput.focus());
+</script>
+
+</body>
+</html>
