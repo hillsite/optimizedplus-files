@@ -57,8 +57,41 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
   }
-  .header .status { font-size: 12px; color: #555; white-space: nowrap; }
+
+  .header .status {
+    font-size: 12px;
+    color: #555;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  #wipe-btn {
+    background: transparent;
+    border: 1px solid #333;
+    color: #555;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 0;
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    touch-action: manipulation;
+  }
+  #wipe-btn:hover,
+  #wipe-btn:focus-visible {
+    color: #ff4040;
+    border-color: #800000;
+    outline: none;
+  }
+  #wipe-btn.confirming {
+    color: #ff4040;
+    border-color: #800000;
+  }
 
   .chat-container {
     flex: 1;
@@ -206,7 +239,7 @@
       font-size: 12px;
       letter-spacing: 0.5px;
     }
-    .header .status { display: none; }
+    .header .status { font-size: 11px; gap: 6px; }
     .chat-container {
       padding: 12px;
       gap: 10px;
@@ -223,6 +256,8 @@
 
   @media (max-width: 380px) {
     .header .title { font-size: 11px; }
+    .header .status { font-size: 10px; }
+    #wipe-btn { padding: 2px 6px; font-size: 10px; }
   }
 
   /* Landscape-телефон */
@@ -247,12 +282,13 @@
 
 <div class="header">
   <div class="title">OBSERVER.SYS — MEMORY INTERFACE</div>
-  <div class="status">retention: UNBOUNDED</div>
+  <div class="status">
+    <span>retention: UNBOUNDED</span>
+    <button id="wipe-btn" type="button" title="wipe local memory">✕</button>
+  </div>
 </div>
 
-<div class="chat-container" id="chat">
-  <div class="msg system">connection established. he is listening.</div>
-</div>
+<div class="chat-container" id="chat"></div>
 
 <div class="input-area">
   <div class="prompt">C:\&gt;</div>
@@ -270,14 +306,27 @@
 </div>
 
 <script>
+  // ===== Константы =====
   const PROXY_URL = "https://observer.matveja939.workers.dev/";
+  const STORAGE_KEY = 'observer_chat_v1';
+  const MAX_STORED = 30;      // сообщений в localStorage
+  const MAX_CONTEXT = 10;     // сообщений в контексте для API
+  const WIPE_CONFIRM_MS = 3000;
 
+  // ===== DOM =====
   const chatContainer = document.getElementById('chat');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
+  const wipeBtn = document.getElementById('wipe-btn');
 
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
+
+  // ===== Состояние =====
+  // renderedHistory — всё, что видно в чате (для localStorage)
+  // chatHistory — только user/assistant (для API)
+  let renderedHistory = [];
   let chatHistory = [];
+  let isSending = false;
 
   // ===== Мобильная адаптация высоты под виртуальную клавиатуру =====
   if (isTouch && window.visualViewport) {
@@ -297,6 +346,35 @@
     });
   }
 
+  // ===== localStorage =====
+  function loadStored() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(m =>
+        m && typeof m.text === 'string' &&
+        (m.role === 'user' || m.role === 'observer' || m.role === 'error')
+      ).slice(-MAX_STORED);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveStored() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(renderedHistory.slice(-MAX_STORED)));
+    } catch (e) {
+      // QuotaExceeded / private mode — молча игнорируем
+    }
+  }
+
+  function clearStored() {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+  }
+
+  // ===== Рендер =====
   function appendMessage(role, text) {
     const div = document.createElement('div');
     div.className = 'msg ' + role;
@@ -306,20 +384,63 @@
     return div;
   }
 
+  // Явное сохранение в историю — вызывать ПОСЛЕ того, как текст окончательно установлен
+  function commit(role, text) {
+    if (!text) return;
+    renderedHistory.push({ role, text });
+    if (renderedHistory.length > MAX_STORED) {
+      renderedHistory = renderedHistory.slice(-MAX_STORED);
+    }
+    saveStored();
+  }
+
+  function pushContext(role, content) {
+    chatHistory.push({ role, content });
+    if (chatHistory.length > MAX_CONTEXT) {
+      chatHistory = chatHistory.slice(-MAX_CONTEXT);
+    }
+  }
+
+  // ===== Восстановление сессии =====
+  function restoreSession() {
+    const stored = loadStored();
+    renderedHistory = stored.slice();
+    chatHistory = [];
+
+    if (stored.length === 0) {
+      appendMessage('system', 'connection established. he is listening.');
+      return;
+    }
+
+    appendMessage('system', 'memory restored. he remembers.');
+    stored.forEach(m => {
+      appendMessage(m.role, m.text);
+      if (m.role === 'user') chatHistory.push({ role: 'user', content: m.text });
+      if (m.role === 'observer') chatHistory.push({ role: 'assistant', content: m.text });
+    });
+    if (chatHistory.length > MAX_CONTEXT) {
+      chatHistory = chatHistory.slice(-MAX_CONTEXT);
+    }
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // ===== Отправка =====
   async function sendMessage() {
+    if (isSending) return;
     const text = userInput.value.trim();
     if (!text) return;
 
+    isSending = true;
     userInput.value = '';
     sendBtn.disabled = true;
     userInput.disabled = true;
 
     appendMessage('user', text);
+    commit('user', text);
+    pushContext('user', text);
 
     const observerMsgEl = appendMessage('observer', '');
     observerMsgEl.innerHTML = '<span class="typing"></span>';
-
-    chatHistory.push({ role: "user", content: text });
 
     try {
       const response = await fetch(PROXY_URL, {
@@ -331,38 +452,67 @@
       const data = await response.json();
 
       if (data.error) {
-        observerMsgEl.textContent = `[API ERROR: ${data.error.message || data.error}]`;
+        const msg = `[API ERROR: ${data.error.message || data.error}]`;
+        observerMsgEl.textContent = msg;
         observerMsgEl.className = 'msg error';
+        commit('error', msg);
         return;
       }
 
       if (data.choices && data.choices[0] && data.choices[0].message) {
         let reply = data.choices[0].message.content.replace(/^["']|["']$/g, '');
         observerMsgEl.textContent = reply;
-
-        chatHistory.push({ role: "assistant", content: reply });
-
-        if (chatHistory.length > 10) {
-          chatHistory = chatHistory.slice(chatHistory.length - 10);
-        }
+        pushContext('assistant', reply);
+        commit('observer', reply);
       } else {
-        observerMsgEl.textContent = "[observer is silent]";
+        const msg = '[observer is silent]';
+        observerMsgEl.textContent = msg;
         observerMsgEl.className = 'msg error';
+        commit('error', msg);
       }
     } catch (error) {
-      observerMsgEl.textContent = "[connection lost]";
+      const msg = '[connection lost]';
+      observerMsgEl.textContent = msg;
       observerMsgEl.className = 'msg error';
+      commit('error', msg);
     } finally {
+      isSending = false;
       sendBtn.disabled = false;
       userInput.disabled = false;
-      // На тач-устройствах клавиатура обычно уже открыта — не дёргаем фокус.
       if (!isTouch) userInput.focus();
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
   }
 
+  // ===== Wipe (двухшаговое подтверждение, без confirm()) =====
+  let wipeTimer = null;
+  wipeBtn.addEventListener('click', () => {
+    if (!wipeBtn.classList.contains('confirming')) {
+      wipeBtn.classList.add('confirming');
+      wipeBtn.textContent = 'sure?';
+      wipeTimer = setTimeout(() => {
+        wipeBtn.classList.remove('confirming');
+        wipeBtn.textContent = '✕';
+        wipeTimer = null;
+      }, WIPE_CONFIRM_MS);
+      return;
+    }
+    // Второй клик — стираем
+    clearTimeout(wipeTimer);
+    wipeTimer = null;
+    wipeBtn.classList.remove('confirming');
+    wipeBtn.textContent = '✕';
+
+    clearStored();
+    renderedHistory = [];
+    chatHistory = [];
+    chatContainer.innerHTML = '';
+    appendMessage('system', 'memory wiped. he is still listening.');
+  });
+
+  // ===== Слушатели =====
   sendBtn.addEventListener('click', sendMessage);
-  userInput.addEventListener('keydown', function(e) {
+  userInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
@@ -370,6 +520,7 @@
   });
 
   window.addEventListener('load', () => {
+    restoreSession();
     if (!isTouch) userInput.focus();
   });
 </script>
