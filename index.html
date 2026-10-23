@@ -166,8 +166,7 @@
   const MAX_CONTEXT = 14;
   const WIPE_CONFIRM_MS = 3000;
 
-  // РАСШИРЕННЫЙ ФИЛЬТР (добавлены note, inquiry, record и т.д.)
-  const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquiry|inquiries|received|receiving)\b/i;
+  const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquir(y|ies)|receiv(e|ed|ing))\b/i;
 
   const chatContainer = document.getElementById('chat');
   const userInput = document.getElementById('user-input');
@@ -268,7 +267,6 @@
 
     clean = clean.replace(/^["']|["']$/g, '').trim();
 
-    // Защита от пустого ответа после чистки
     if (!clean || clean.length < 2) {
        return { reply: '[GLITCH: NO_DATA]', error: null, isBanned: false };
     }
@@ -308,6 +306,12 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: chatHistory })
       });
+
+      // Проверяем, вернул ли сервер ошибку (500, 429 и т.д.)
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errText}`);
+      }
 
       const data = await response.json();
 
@@ -361,7 +365,8 @@
         commit('error', msg);
       }
     } catch (error) {
-      const msg = '[connection lost]';
+      // Если сервер упал, показываем реальную ошибку
+      const msg = `[SYSTEM HALTED] ${error.message}`;
       observerMsgEl.textContent = msg;
       observerMsgEl.className = 'msg error';
       commit('error', msg);
