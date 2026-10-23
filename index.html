@@ -268,7 +268,10 @@
     clean = clean.replace(/^["']|["']$/g, '').trim();
 
     if (!clean || clean.length < 2) {
-       return { reply: '[GLITCH: NO_DATA]', error: null, isBanned: false };
+       // Если ИИ выдал только мысли/скобки, даем ему атмосферную заглушку
+       const fallbacks = ['...', 'stop.', 'i see you.', 'why do you keep doing this.', '...'];
+       const randomFallback = fallbacks[Math.floor(Math.random() * fallbacks.length)];
+       return { reply: randomFallback, error: null, isBanned: false };
     }
 
     const lastObserverMsg = [...chatHistory].reverse().find(m => m.role === 'assistant');
