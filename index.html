@@ -15,14 +15,8 @@
     src: url('/fonts/minecraft.ttf') format('truetype');
   }
 
-  * {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   ::selection { background: #00ff40; color: #000; }
-
   html { height: 100%; }
 
   body {
@@ -52,204 +46,88 @@
     gap: 10px;
   }
 
-  .header .title {
-    color: #00ff40;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-  }
-
-  .header .status {
-    font-size: 12px;
-    color: #555;
-    white-space: nowrap;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-shrink: 0;
-  }
+  .header .title { color: #00ff40; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .header .status { font-size: 12px; color: #555; white-space: nowrap; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
   #wipe-btn {
-    background: transparent;
-    border: 1px solid #333;
-    color: #555;
-    font-family: inherit;
-    font-size: 11px;
-    letter-spacing: 0;
-    padding: 3px 8px;
-    cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
-    touch-action: manipulation;
+    background: transparent; border: 1px solid #333; color: #555; font-family: inherit;
+    font-size: 11px; letter-spacing: 0; padding: 3px 8px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s; touch-action: manipulation;
   }
-  #wipe-btn:hover,
-  #wipe-btn:focus-visible {
-    color: #ff4040;
-    border-color: #800000;
-    outline: none;
-  }
-  #wipe-btn.confirming {
-    color: #ff4040;
-    border-color: #800000;
-  }
+  #wipe-btn:hover, #wipe-btn:focus-visible { color: #ff4040; border-color: #800000; outline: none; }
+  #wipe-btn.confirming { color: #ff4040; border-color: #800000; }
 
   .chat-container {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column;
+    gap: 12px; max-width: 900px; margin: 0 auto; width: 100%;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
   }
-
   .chat-container::-webkit-scrollbar { width: 8px; }
   .chat-container::-webkit-scrollbar-thumb { background: #1a1a1a; }
 
   .msg {
-    max-width: 85%;
-    line-height: 1.6;
-    font-size: 15px;
-    animation: fade-in 0.3s ease-out;
-    word-wrap: break-word;
-    overflow-wrap: anywhere;
+    max-width: 85%; line-height: 1.6; font-size: 15px; animation: fade-in 0.3s ease-out;
+    word-wrap: break-word; overflow-wrap: anywhere;
   }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-  @keyframes fade-in {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .msg.user {
-    align-self: flex-end;
-    color: #4a9ec9;
-    text-align: right;
-  }
-
-  .msg.observer {
-    align-self: flex-start;
-    color: #00ff40;
-  }
-
-  .msg.observer::before {
-    content: '[OBSERVER] ';
-    color: #00ff40;
-    font-weight: bold;
-  }
-
-  .msg.system {
-    align-self: center;
-    color: #555;
-    font-size: 12px;
-    text-align: center;
-    font-style: italic;
-  }
-
+  .msg.user { align-self: flex-end; color: #4a9ec9; text-align: right; }
+  .msg.observer { align-self: flex-start; color: #00ff40; }
+  .msg.observer::before { content: '[OBSERVER] '; color: #00ff40; font-weight: bold; }
+  .msg.system { align-self: center; color: #555; font-size: 12px; text-align: center; font-style: italic; }
   .msg.error {
-    align-self: center;
-    color: #ff4040;
-    font-size: 12px;
-    text-align: center;
-    border: 1px solid #800000;
-    padding: 10px;
-    background: #1a0000;
-    white-space: pre-wrap;
+    align-self: center; color: #ff4040; font-size: 12px; text-align: center;
+    border: 1px solid #800000; padding: 10px; background: #1a0000; white-space: pre-wrap;
   }
 
   .input-area {
-    background: #0a0a0a;
-    border-top: 1px solid #1a1a1a;
-    padding: 15px 20px;
+    background: #0a0a0a; border-top: 1px solid #1a1a1a; padding: 15px 20px;
     padding-bottom: calc(15px + env(safe-area-inset-bottom));
-    display: flex;
-    gap: 10px;
-    max-width: 900px;
-    margin: 0 auto;
-    width: 100%;
-    flex-shrink: 0;
+    display: flex; gap: 10px; max-width: 900px; margin: 0 auto; width: 100%; flex-shrink: 0;
   }
-
-  .input-area .prompt {
-    color: #00ff40;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    flex-shrink: 0;
-  }
-
+  .input-area .prompt { color: #00ff40; font-weight: bold; display: flex; align-items: center; flex-shrink: 0; }
   .input-area input {
-    flex: 1;
-    min-width: 0;
-    background: #000;
-    border: 1px solid #333;
-    color: #c0c0c0;
-    padding: 10px 15px;
-    font-family: 'Courier New', monospace;
-    font-size: 16px; /* предотвращает autozoom в iOS */
-    outline: none;
-    transition: border-color 0.2s;
-    border-radius: 0;
-    -webkit-appearance: none;
-    appearance: none;
+    flex: 1; min-width: 0; background: #000; border: 1px solid #333; color: #c0c0c0;
+    padding: 10px 15px; font-family: 'Courier New', monospace; font-size: 16px;
+    outline: none; transition: border-color 0.2s; border-radius: 0; -webkit-appearance: none; appearance: none;
   }
-
   .input-area input:focus { border-color: #00ff40; }
-
   .input-area button {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    color: #d8d8d8;
-    padding: 10px 20px;
-    font-family: 'Courier New', monospace;
-    font-size: 14px;
-    cursor: pointer;
-    transition: background 0.2s;
-    flex-shrink: 0;
-    border-radius: 0;
-    -webkit-appearance: none;
-    appearance: none;
+    background: #1a1a1a; border: 1px solid #333; color: #d8d8d8; padding: 10px 20px;
+    font-family: 'Courier New', monospace; font-size: 14px; cursor: pointer;
+    transition: background 0.2s; flex-shrink: 0; border-radius: 0; -webkit-appearance: none; appearance: none;
     touch-action: manipulation;
   }
-
   .input-area button:hover { background: #2a2a2a; border-color: #555; }
   .input-area button:active { background: #2a2a2a; }
   .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .typing {
-    display: inline-block;
-    width: 8px;
-    height: 15px;
-    background-color: #00ff40;
-    animation: blink 1s steps(2) infinite;
-    vertical-align: middle;
-    margin-left: 5px;
+    display: inline-block; width: 8px; height: 15px; background-color: #00ff40;
+    animation: blink 1s steps(2) infinite; vertical-align: middle; margin-left: 5px;
   }
-
   @keyframes blink { 50% { opacity: 0; } }
+
+  /* ===== GLITCH PUNISHMENT ANIMATION ===== */
+  @keyframes glitch-shake {
+    0% { transform: translate(0); filter: hue-rotate(0deg) contrast(1); }
+    20% { transform: translate(-3px, 2px); filter: hue-rotate(90deg) contrast(2); }
+    40% { transform: translate(3px, -1px); filter: hue-rotate(-90deg) contrast(1.5); }
+    60% { transform: translate(-2px, -2px); filter: hue-rotate(45deg) contrast(3); }
+    80% { transform: translate(2px, 1px); filter: hue-rotate(0deg) contrast(1); }
+    100% { transform: translate(0); filter: none; }
+  }
+  .glitch-active {
+    animation: glitch-shake 0.4s cubic-bezier(.25,.46,.45,.94) both;
+  }
 
   /* ===== Mobile ===== */
   @media (max-width: 640px) {
-    .header {
-      padding: 8px 12px;
-      padding-top: calc(8px + env(safe-area-inset-top));
-      font-size: 12px;
-      letter-spacing: 0.5px;
-    }
+    .header { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); font-size: 12px; letter-spacing: 0.5px; }
     .header .status { font-size: 11px; gap: 6px; }
-    .chat-container {
-      padding: 12px;
-      gap: 10px;
-    }
+    .chat-container { padding: 12px; gap: 10px; }
     .msg { max-width: 92%; }
-    .input-area {
-      padding: 10px 12px;
-      padding-bottom: calc(10px + env(safe-area-inset-bottom));
-      gap: 8px;
-    }
+    .input-area { padding: 10px 12px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); gap: 8px; }
     .input-area .prompt { display: none; }
     .input-area button { padding: 10px 16px; }
   }
@@ -260,21 +138,10 @@
     #wipe-btn { padding: 2px 6px; font-size: 10px; }
   }
 
-  /* Landscape-телефон */
   @media (max-height: 500px) and (orientation: landscape) {
-    .header {
-      padding: 6px 12px;
-      padding-top: calc(6px + env(safe-area-inset-top));
-      font-size: 12px;
-    }
-    .chat-container {
-      padding: 8px 12px;
-      gap: 6px;
-    }
-    .input-area {
-      padding: 6px 12px;
-      padding-bottom: calc(6px + env(safe-area-inset-bottom));
-    }
+    .header { padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); font-size: 12px; }
+    .chat-container { padding: 8px 12px; gap: 6px; }
+    .input-area { padding: 6px 12px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -292,28 +159,20 @@
 
 <div class="input-area">
   <div class="prompt">C:\&gt;</div>
-  <input
-    type="text"
-    id="user-input"
-    placeholder="type a message..."
-    autocomplete="off"
-    autocapitalize="off"
-    autocorrect="off"
-    spellcheck="false"
-    enterkeyhint="send"
-  >
+  <input type="text" id="user-input" placeholder="type a message..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
   <button id="send-btn" type="button">SEND</button>
 </div>
 
 <script>
-  // ===== Константы =====
   const PROXY_URL = "https://observer.matveja939.workers.dev/";
   const STORAGE_KEY = 'observer_chat_v1';
-  const MAX_STORED = 30;      // сообщений в localStorage
-  const MAX_CONTEXT = 10;     // сообщений в контексте для API
+  const MAX_STORED = 30;
+  const MAX_CONTEXT = 10;
   const WIPE_CONFIRM_MS = 3000;
 
-  // ===== DOM =====
+  // Регулярное выражение для "наказания" (ловит forbidden слова)
+  const BANNED_REGEX = /\b(noted|registers|registering|registered|logged|logging|acknowledged|detected|detecting)\b/i;
+
   const chatContainer = document.getElementById('chat');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
@@ -321,29 +180,19 @@
 
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
 
-  // ===== Состояние =====
-  // renderedHistory — всё, что видно в чате (для localStorage)
-  // chatHistory — только user/assistant (для API)
   let renderedHistory = [];
   let chatHistory = [];
   let isSending = false;
 
-  // ===== Мобильная адаптация высоты под виртуальную клавиатуру =====
+  // ===== Мобильная высота =====
   if (isTouch && window.visualViewport) {
     const vv = window.visualViewport;
     const applyHeight = () => {
-      // Игнорируем pinch-zoom — иначе layout будет скакать при зуме.
-      if (vv.scale > 1.01) {
-        document.body.style.height = '';
-        return;
-      }
+      if (vv.scale > 1.01) { document.body.style.height = ''; return; }
       document.body.style.height = vv.height + 'px';
     };
     applyHeight();
-    vv.addEventListener('resize', () => {
-      applyHeight();
-      chatContainer.scrollTop = chatContainer.scrollHeight;
-    });
+    vv.addEventListener('resize', () => { applyHeight(); chatContainer.scrollTop = chatContainer.scrollHeight; });
   }
 
   // ===== localStorage =====
@@ -353,23 +202,12 @@
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter(m =>
-        m && typeof m.text === 'string' &&
-        (m.role === 'user' || m.role === 'observer' || m.role === 'error')
-      ).slice(-MAX_STORED);
-    } catch (e) {
-      return [];
-    }
+      return parsed.filter(m => m && typeof m.text === 'string' && (m.role === 'user' || m.role === 'observer' || m.role === 'error')).slice(-MAX_STORED);
+    } catch (e) { return []; }
   }
-
   function saveStored() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(renderedHistory.slice(-MAX_STORED)));
-    } catch (e) {
-      // QuotaExceeded / private mode — молча игнорируем
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(renderedHistory.slice(-MAX_STORED))); } catch (e) {}
   }
-
   function clearStored() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   }
@@ -384,24 +222,25 @@
     return div;
   }
 
-  // Явное сохранение в историю — вызывать ПОСЛЕ того, как текст окончательно установлен
   function commit(role, text) {
     if (!text) return;
     renderedHistory.push({ role, text });
-    if (renderedHistory.length > MAX_STORED) {
-      renderedHistory = renderedHistory.slice(-MAX_STORED);
-    }
+    if (renderedHistory.length > MAX_STORED) renderedHistory = renderedHistory.slice(-MAX_STORED);
     saveStored();
   }
 
   function pushContext(role, content) {
     chatHistory.push({ role, content });
-    if (chatHistory.length > MAX_CONTEXT) {
-      chatHistory = chatHistory.slice(-MAX_CONTEXT);
-    }
+    if (chatHistory.length > MAX_CONTEXT) chatHistory = chatHistory.slice(-MAX_CONTEXT);
   }
 
-  // ===== Восстановление сессии =====
+  // ===== Глитч =====
+  function triggerGlitch() {
+    document.body.classList.add('glitch-active');
+    setTimeout(() => document.body.classList.remove('glitch-active'), 400);
+  }
+
+  // ===== Восстановление =====
   function restoreSession() {
     const stored = loadStored();
     renderedHistory = stored.slice();
@@ -418,9 +257,7 @@
       if (m.role === 'user') chatHistory.push({ role: 'user', content: m.text });
       if (m.role === 'observer') chatHistory.push({ role: 'assistant', content: m.text });
     });
-    if (chatHistory.length > MAX_CONTEXT) {
-      chatHistory = chatHistory.slice(-MAX_CONTEXT);
-    }
+    if (chatHistory.length > MAX_CONTEXT) chatHistory = chatHistory.slice(-MAX_CONTEXT);
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
 
@@ -461,6 +298,19 @@
 
       if (data.choices && data.choices[0] && data.choices[0].message) {
         let reply = data.choices[0].message.content.replace(/^["']|["']$/g, '');
+
+        // === НАКАЗАНИЕ ЗА БЮРОКРАТИЮ ===
+        if (BANNED_REGEX.test(reply)) {
+          triggerGlitch();
+          const glitchMsg = `[COGNITIVE_LEAK] observer_tried_to_log_data. protocol_rejected. speak to me, not your database.`;
+          observerMsgEl.textContent = glitchMsg;
+          observerMsgEl.className = 'msg error';
+          // Мы не сохраняем этот ответ в контекст, чтобы ИИ не думал, что это нормально.
+          // Но сохраняем в историю для визуала.
+          commit('error', glitchMsg);
+          return; 
+        }
+
         observerMsgEl.textContent = reply;
         pushContext('assistant', reply);
         commit('observer', reply);
@@ -484,7 +334,7 @@
     }
   }
 
-  // ===== Wipe (двухшаговое подтверждение, без confirm()) =====
+  // ===== Wipe =====
   let wipeTimer = null;
   wipeBtn.addEventListener('click', () => {
     if (!wipeBtn.classList.contains('confirming')) {
@@ -497,7 +347,6 @@
       }, WIPE_CONFIRM_MS);
       return;
     }
-    // Второй клик — стираем
     clearTimeout(wipeTimer);
     wipeTimer = null;
     wipeBtn.classList.remove('confirming');
@@ -513,10 +362,7 @@
   // ===== Слушатели =====
   sendBtn.addEventListener('click', sendMessage);
   userInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      sendMessage();
-    }
+    if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
   });
 
   window.addEventListener('load', () => {
