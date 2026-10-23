@@ -168,7 +168,6 @@
 
   const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquir(y|ies)|receiv(e|ed|ing)|monitoring|adjusting|status|stable|affirmative)\b/i;
   
-  // Ловушка для рассуждений ИИ о своих же правилах
   const META_REGEX = /\b(banned words|system prompt|instruction|rule|database|diagnostic|processing input|testing observed)\b/i;
 
   const chatContainer = document.getElementById('chat');
@@ -251,7 +250,13 @@
       appendMessage(m.role, m.text);
       if (m.role === 'user') pushContext('user', m.text);
       if (m.role === 'observer') pushContext('assistant', m.text);
-      if (m.role === 'error') punishmentCount++;
+      
+      // ВАЖНО: Если в истории было наказание, мы восстанавливаем системный пинок, 
+      // чтобы ИИ после перезагрузки помнил, что его наказали.
+      if (m.role === 'error') {
+        punishmentCount++;
+        pushContext('system', `[SYSTEM INJECTION: Remember, you were punished before for saying banned words. Do not repeat past mistakes.]`);
+      }
     });
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }
@@ -259,12 +264,10 @@
   function cleanAndValidateReply(rawReply) {
     let clean = rawReply;
     
-    // Удаляем скобки и звездочки
     clean = clean.replace(/\(.*?\)/g, '');
     clean = clean.replace(/\[.*?\]/g, '');
     clean = clean.replace(/\*.*?\*/g, '');
     
-    // Оставляем только первые 2 предложения
     const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
     if (sentences.length > 2) {
       clean = sentences.slice(0, 2).join(' ');
@@ -278,12 +281,10 @@
        return { reply: randomFallback, error: null, isBanned: false };
     }
 
-    // Проверка на МЕТА-РАССУЖДЕНИЯ (утечка промпта)
     if (META_REGEX.test(clean)) {
       return { reply: '', error: 'meta', isBanned: false };
     }
 
-    // Проверка на заикание (повторение текста внутри одного ответа)
     const halfLength = Math.floor(clean.length / 2);
     if (halfLength > 4) {
       const firstHalf = clean.slice(0, halfLength).trim();
@@ -293,7 +294,6 @@
       }
     }
 
-    // Проверка на повторение прошлой фразы
     const lastObserverMsg = [...chatHistory].reverse().find(m => m.role === 'assistant');
     if (lastObserverMsg && lastObserverMsg.content.trim().toLowerCase() === clean.toLowerCase()) {
       return { reply: '', error: 'repeat', isBanned: false };
@@ -349,7 +349,6 @@
         const rawReply = data.choices[0].message.content;
         const validation = cleanAndValidateReply(rawReply);
 
-        // Если ИИ зациклился или начал умничать
         if (validation.error) {
           triggerGlitch();
           let glitchMsg = '';
@@ -369,7 +368,6 @@
           return;
         }
 
-        // Если сказал запрещенное слово
         if (validation.isBanned) {
           punishmentCount++;
           triggerGlitch();
@@ -388,7 +386,6 @@
           return; 
         }
 
-        // Нормальный ответ
         observerMsgEl.textContent = validation.reply;
         pushContext('assistant', validation.reply);
         commit('observer', validation.reply);
