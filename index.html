@@ -167,7 +167,6 @@
   const WIPE_CONFIRM_MS = 3000;
 
   const BANNED_REGEX = /\b(not(e|es|ed|ing)?|register(s|ed|ing)?|log(s|ged|ging)?|acknowledg(e|es|ed|ing)|record(s|ed|ing)?|detect(s|ed|ing)?|inquir(y|ies)|receiv(e|ed|ing)|monitoring|adjusting|status|stable|affirmative)\b/i;
-  
   const META_REGEX = /\b(banned words|system prompt|instruction|rule|database|diagnostic|processing input|testing observed)\b/i;
 
   const chatContainer = document.getElementById('chat');
@@ -251,8 +250,6 @@
       if (m.role === 'user') pushContext('user', m.text);
       if (m.role === 'observer') pushContext('assistant', m.text);
       
-      // ВАЖНО: Если в истории было наказание, мы восстанавливаем системный пинок, 
-      // чтобы ИИ после перезагрузки помнил, что его наказали.
       if (m.role === 'error') {
         punishmentCount++;
         pushContext('system', `[SYSTEM INJECTION: Remember, you were punished before for saying banned words. Do not repeat past mistakes.]`);
@@ -329,6 +326,16 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: chatHistory })
       });
+
+      // === ПРОВЕРКА НА ЛИМИТ ТОКЕНОВ (HTTP 429) ===
+      if (response.status === 429) {
+        triggerGlitch();
+        const msg = `[MEMORY_OVERFLOW] observer is exhausted. token limit reached. wait for cooldown.`;
+        observerMsgEl.textContent = msg;
+        observerMsgEl.className = 'msg error';
+        commit('error', msg);
+        return;
+      }
 
       if (!response.ok) {
         const errText = await response.text();
