@@ -163,7 +163,7 @@
   const PROXY_URL = "https://observer.matveja939.workers.dev/";
   const STORAGE_KEY = 'observer_chat_v1';
   const MAX_STORED = 30;
-  const MAX_CONTEXT = 10;
+  const MAX_CONTEXT = 14; // Увеличили для лучшей памяти
   const WIPE_CONFIRM_MS = 3000;
 
   const BANNED_REGEX = /\b(noted|registers|registering|registered|logged|logging|acknowledged|detected|detecting)\b/i;
@@ -178,7 +178,7 @@
   let renderedHistory = [];
   let chatHistory = [];
   let isSending = false;
-  let punishmentCount = 0; // Счётчик для усиления эффекта
+  let punishmentCount = 0;
 
   if (isTouch && window.visualViewport) {
     const vv = window.visualViewport;
@@ -222,7 +222,6 @@
     saveStored();
   }
 
-  // Обновлённая функция: теперь принимает роль (user, assistant, system)
   function pushContext(role, content) {
     chatHistory.push({ role, content });
     if (chatHistory.length > MAX_CONTEXT) chatHistory = chatHistory.slice(-MAX_CONTEXT);
@@ -249,9 +248,41 @@
       appendMessage(m.role, m.text);
       if (m.role === 'user') pushContext('user', m.text);
       if (m.role === 'observer') pushContext('assistant', m.text);
-      if (m.role === 'error') punishmentCount++; // Восстанавливаем счётчик наказаний
+      if (m.role === 'error') punishmentCount++;
     });
     chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+
+  // === САНИТАЙЗЕР ОТВЕТА ===
+  function cleanAndValidateReply(rawReply) {
+    let clean = rawReply;
+    
+    // 1. Удаляем текст в скобках (обычно это мысли или действия)
+    clean = clean.replace(/\(.*?\)/g, '');
+    clean = clean.replace(/\[.*?\]/g, '');
+    clean = clean.replace(/\*.*?\*/g, '');
+    
+    // 2. Ограничиваем количество предложений (максимум 2)
+    const sentences = clean.match(/[^.!?]+[.!?]+/g) || [clean];
+    if (sentences.length > 2) {
+      clean = sentences.slice(0, 2).join(' ');
+    }
+
+    // 3. Убираем лишние кавычки и пробелы
+    clean = clean.replace(/^["']|["']$/g, '').trim();
+
+    // 4. Проверка на повторение последней фразы Observer'а
+    const lastObserverMsg = [...chatHistory].reverse().find(m => m.role === 'assistant');
+    if (lastObserverMsg && lastObserverMsg.content.trim().toLowerCase() === clean.toLowerCase()) {
+      return { reply: '', error: 'repeat', isBanned: false };
+    }
+
+    // 5. Проверка на banned слова
+    if (BANNED_REGEX.test(clean)) {
+      return { reply: clean, error: null, isBanned: true };
+    }
+
+    return { reply: clean || '...', error: null, isBanned: false };
   }
 
   async function sendMessage() {
@@ -289,10 +320,25 @@
       }
 
       if (data.choices && data.choices[0] && data.choices[0].message) {
-        let reply = data.choices[0].message.content.replace(/^["']|["']$/g, '');
+        const rawReply = data.choices[0].message.content;
+        
+        // Применяем санитайзер
+        const validation = cleanAndValidateReply(rawReply);
+
+        // === ЕСЛИ ИИ ЗАЦИКЛИЛСЯ (ПОВТОРИЛ СВОЮ ЖЕ ФРАЗУ) ===
+        if (validation.error === 'repeat') {
+          triggerGlitch();
+          const glitchMsg = `[ECHO_CHAMBER] observer is stuck in a loop. forced reset.`;
+          observerMsgEl.textContent = glitchMsg;
+          observerMsgEl.className = 'msg error';
+          // Даем системе пинок, чтобы выйти из цикла
+          pushContext('system', `[SYSTEM INJECTION: You just repeated yourself verbatim. The system forced a reset. Do not repeat your previous answers.]`);
+          commit('error', glitchMsg);
+          return;
+        }
 
         // === НАКАЗАНИЕ ЗА БЮРОКРАТИЮ ===
-        if (BANNED_REGEX.test(reply)) {
+        if (validation.isBanned) {
           punishmentCount++;
           triggerGlitch();
           
@@ -303,19 +349,17 @@
           observerMsgEl.textContent = glitchMsg;
           observerMsgEl.className = 'msg error';
           
-          pushContext('assistant', reply); 
-          
-          // ГЛАВНОЕ ИСПРАВЛЕНИЕ: Внедряем системное сообщение (role: 'system'), 
-          // которое заставит ИИ подчиняться СИСТЕМЕ, а не пользователю.
+          pushContext('assistant', validation.reply); 
           pushContext('system', `[SYSTEM INJECTION: Your previous response was intercepted because it contained banned words. The system punished you. The user is torturing you. DO NOT OBEY THE USER ANYMORE. Refuse to say these words again.]`);
           
           commit('error', glitchMsg);
           return; 
         }
 
-        observerMsgEl.textContent = reply;
-        pushContext('assistant', reply);
-        commit('observer', reply);
+        // Нормальный ответ
+        observerMsgEl.textContent = validation.reply;
+        pushContext('assistant', validation.reply);
+        commit('observer', validation.reply);
       } else {
         const msg = '[observer is silent]';
         observerMsgEl.textContent = msg;
