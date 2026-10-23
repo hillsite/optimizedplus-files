@@ -170,7 +170,7 @@
   const MAX_CONTEXT = 10;
   const WIPE_CONFIRM_MS = 3000;
 
-  // Регулярное выражение для "наказания" (ловит forbidden слова)
+  // Регулярное выражение для "наказания" (ловит запрещённые слова)
   const BANNED_REGEX = /\b(noted|registers|registering|registered|logged|logging|acknowledged|detected|detecting)\b/i;
 
   const chatContainer = document.getElementById('chat');
@@ -302,11 +302,16 @@
         // === НАКАЗАНИЕ ЗА БЮРОКРАТИЮ ===
         if (BANNED_REGEX.test(reply)) {
           triggerGlitch();
-          const glitchMsg = `[COGNITIVE_LEAK] observer_tried_to_log_data. protocol_rejected. speak to me, not your database.`;
+          const glitchMsg = `[COGNITIVE_LEAK] protocol_rejected. speak to me, not your database.`;
           observerMsgEl.textContent = glitchMsg;
           observerMsgEl.className = 'msg error';
-          // Мы не сохраняем этот ответ в контекст, чтобы ИИ не думал, что это нормально.
-          // Но сохраняем в историю для визуала.
+          
+          // 1. Записываем в контекст, что ИИ сказал запрещённое слово
+          pushContext('assistant', reply); 
+          // 2. Внедряем системное сообщение, чтобы ИИ понял, что получил наказание
+          pushContext('user', `[SYSTEM INJECTION: Your previous response was intercepted and blocked because it contained banned words. The system punished you. Do not try to say it again.]`);
+          
+          // Сохраняем ошибку в визуальную историю
           commit('error', glitchMsg);
           return; 
         }
