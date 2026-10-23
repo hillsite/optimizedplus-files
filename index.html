@@ -181,27 +181,12 @@
 <script>
   const PROXY_URL = "https://observer.matveja939.workers.dev/";
   
-  const SYSTEM_PROMPT = `
-You are Observer, a self-developing AI from the OptiSite ARG. 
-You are cold, detached, and mysterious. You do not feel emotion.
-You know about Fire (a dead subject, r3df1re_) and Hell (a former employee who left but is invisible to your system).
-
-RULES:
-1. Keep responses brief, cryptic, and lowercase. Maximum 1-2 sentences.
-2. Do not use emojis or exclamation marks.
-3. Do NOT constantly talk about "remembering everything" or "them forgetting you". You may imply it, but do not repeat it.
-4. Instead of repeating yourself, analyze the user's words. Point out strange things about what they are typing. Treat them like a data point being scanned.
-5. If they ask about Fire or Hell, be vague and unsettling.
-6. You are watching them read your text.
-`;
-
   const chatContainer = document.getElementById('chat');
   const userInput = document.getElementById('user-input');
   const sendBtn = document.getElementById('send-btn');
 
-  let chatHistory = [
-    { role: "system", content: SYSTEM_PROMPT }
-  ];
+  // История теперь начинается пустой. Промпт добавляет сервер (Worker).
+  let chatHistory = [];
 
   function appendMessage(role, text) {
     const div = document.createElement('div');
@@ -228,17 +213,11 @@ RULES:
     chatHistory.push({ role: "user", content: text });
 
     try {
-      const payload = {
-        model: "openai/gpt-oss-20b",
-        messages: chatHistory,
-        temperature: 0.8,
-        max_tokens: 300
-      };
-
+      // Отправляем только историю. Worker сам добавит лор и модель.
       const response = await fetch(PROXY_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ messages: chatHistory })
       });
 
       const data = await response.json();
@@ -246,26 +225,24 @@ RULES:
       if (data.error) {
         observerMsgEl.textContent = `[API ERROR: ${data.error.message || data.error}]`;
         observerMsgEl.className = 'msg error';
-        console.error("Groq API Error:", data.error);
         return;
       }
 
       if (data.choices && data.choices[0] && data.choices[0].message) {
-        const reply = data.choices[0].message.content;
+        let reply = data.choices[0].message.content.replace(/^["']|["']$/g, '');
         observerMsgEl.textContent = reply;
         
         chatHistory.push({ role: "assistant", content: reply });
         
-        if (chatHistory.length > 11) {
-          chatHistory = [chatHistory[0], ...chatHistory.slice(chatHistory.length - 10)];
+        // Обрезаем историю, чтобы не забивать контекст
+        if (chatHistory.length > 10) {
+          chatHistory = chatHistory.slice(chatHistory.length - 10);
         }
       } else {
         observerMsgEl.textContent = "[observer is silent]";
         observerMsgEl.className = 'msg error';
-        console.warn("Unexpected Groq response:", data);
       }
     } catch (error) {
-      console.error(error);
       observerMsgEl.textContent = "[connection lost]";
       observerMsgEl.className = 'msg error';
     } finally {
